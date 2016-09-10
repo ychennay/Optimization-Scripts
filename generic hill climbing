@@ -33,3 +33,9 @@ while (stallCounter < maxIterations)    {
   cat("Final solution achieved after ", iterationsCounter, " iterations. The best evaluation was ", currentEvaluation,". The best solution is ", currentSolution) 
     }
 }
+
+Hill climbing using random step algorithm- code for change function:
+
+randomNormalStep function(learningRate, lengthVector, lowerbounds, upperbounds){
+step =rnorm(lengthVector, sd = learningRate)
+nextSolution = currentSolution + step}
