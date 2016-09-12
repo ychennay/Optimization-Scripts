@@ -1,0 +1,26 @@
+# this code is derived from Modern Optimization With R by Paulo Cortez, in Chapter 6 (Multi-Objective Optimization). All code from his
+# book is freely available on his personal website.
+
+x <- c(0,1,1,0,1,1,1,0) #some sample inputs, with 8 dimensions
+
+sumBinary = function(x){sum(x)}
+intBinary = function(x){sum(2^(which(rev(x==1))-1))}
+maxSin = function(x){
+  pi = 3.14159;
+  D = length(x) # finds the length of 
+  x = intBinary(x) #converts the x array into an integer
+  return(sin(pi*(as.numeric(x))/(2^D)))}
+
+benchmarkFES = function(x){
+  D = length(x) # number of dimensions
+  f1 = 0; f2 = 0 # initialize the starting values for f1 and f2
+  {
+  for (i in 1:D)# initialize the loop 
+  {
+    f1 = f1 # +... whatever your equation is
+    f2 = f2 # +... whatever your second equation is
+  }
+  return(c(f1,f2))
+    }
+
+}
