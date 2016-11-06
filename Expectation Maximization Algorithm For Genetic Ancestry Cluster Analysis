@@ -1,0 +1,121 @@
+# created for my Machine Learning course at UCLA. It's a first attempt, and the algorithm does converge, but is highly susceptible to uninformative priors and 
+# gets stuck on local minimums frequently.
+
+option= (digits=10)
+
+readgeno=function(fname){
+  r=readLines (fname)
+  x=matrix(as.numeric(unlist(strsplit (r,split =""))),nrow=length(r), byrow=T)
+  return (x)
+}
+
+readpheno=function(fname) {
+  y=read.table (); y=y$V1
+  return (y)
+}
+
+#import genotypes
+mixture1_genotypes <- t(readgeno("mixture1.geno"))
+#import mixture proportions (pi)
+pi_k1 = 0.3 # set the mixture proportion for population 1 to be 0.4
+pi_k2 = 0.7 # set the mixture proportion for population 2 to be 0.6
+
+#import the Z matrix for data set (z; rows = number of individuals, columns = number of populations)
+mixture1_z_matrix <- read.csv(file="ganc_mixture1.txt", header=FALSE, sep = " ")
+
+# mixture1_genotypes is a 1000 x 5000 matrix
+J = nrow(mixture1_genotypes) #5000 SNPs
+N = ncol(mixture1_genotypes) #1000 individuals
+K = 2
+#transpose matrix to get 1000 x 5000 matrix shape
+mixture1_genotypes <- t(mixture1_genotypes)
+
+#create an empty J x K matrix to store F values (the likelihood of each SNP being in a particular cluster)
+f_matrix <- matrix(nrow=J, ncol=K)
+#populate the F matrix with randomly uniform values from 0 to 1 (to simulate probability)
+f_matrix <- runif(J*K,min=0, max=1)
+f_matrix <- matrix(f_matrix, nrow=J, ncol=K)
+#create random exponential distribution vector for pi (mixture proportions)
+pi_values <- rexp(K)
+#standardize so sum of pi values sum to 1
+pi1 <- pi_values[1] / (pi_values[1] + pi_values[2])
+pi2 <- pi_values[2] / (pi_values[1] + pi_values[2])
+pi1 + pi2 == 1 # check that pi1 + pi2 sum to 1
+pi_values <- rep(NA, 2)
+pi_values[1] <- pi1
+pi_values[2] <- pi2
+#set additional parameters for convergence
+max_iterations = 100
+delta_log_likelihood = 1e-8
+responsibility_k1_vector <- c()
+responsibility_k2_vector <- c()
+old_log_likelihood = 0
+new_log_likelihood_vector <- c()
+
+
+################################################################################
+
+for (iteration in 1:50)
+{
+
+  old_log_likelihood <- new_log_likelihood
+  print(pi_values)
+  
+  for (row_num in 1:1000){
+    value_k1 <- summation(pi_k1 * dbinom(mixture1_genotypes[row_num,], 1, prob = f_matrix[,1]))
+    value_k2 <- summation(pi_k2 * dbinom(mixture1_genotypes[row_num,], 1, prob = f_matrix[,2]))
+    total_responsibility = value_k1 + value_k2
+    responsibility_k1 = value_k1 / total_responsibility
+    responsibility_k2 = value_k2 / total_responsibility
+    responsibility_k1_vector <- append(responsibility_k1_vector, responsibility_k1)
+    responsibility_k2_vector <- append(responsibility_k2_vector, responsibility_k2)}
+
+  N_k1 <- sum(responsibility_k1_vector)
+  N_k2 <- sum(responsibility_k2_vector)
+  sum_total_k1 <- c()  
+  sum_total_k2 <- c()
+  x_bar_k1_n <- c()
+  x_bar_k2_n <- c()
+  
+  for (row_num in 1:1000){         
+    value_1 <- responsibility_k1_vector[row_num] * mean(mixture1_genotypes[row_num,])
+    sum_total_k1 <- append(sum_total_k1, value_1)
+    x_bar_k1_n <- append(x_bar_k1_n, value / responsibility_k1_vector[row_num])
+  
+    value_2 <- responsibility_k2_vector[row_num] * mean(mixture1_genotypes[row_num,])
+    sum_total_k2 <- append(sum_total_k2, value_2)
+    x_bar_k2_n <- append(x_bar_k2_n, value / responsibility_k2_vector[row_num])}
+
+  f_matrix[,1] <- x_bar_k1_n
+  f_matrix[,2] <- x_bar_k2_n
+  
+#x_bar_k1 = sum(sum_total) / sum(responsibility_k1_vector)
+#x_bar_k2 = sum(sum_total) / sum(responsibility_k2_vector)
+
+  pi1 = N_k1 / (N_k1 + N_k2)
+  pi2 = N_k2 / (N_k1 + N_k2)
+  pi_values[1] <- pi1
+  pi_values[2] <- pi2
+
+  log_likelihood_vector <- c()
+  for (row_num in 1:1000){
+    log_likelihood_k1 = responsibility_k1_vector[row_num] * (log(pi_values[1]) + mixture1_genotypes[row_num,] %*% log(f_matrix[,1]) + (1 - mixture1_genotypes[row_num,]) %*% log(1 - f_matrix[,1]))
+    log_likelihood_k2 = responsibility_k2_vector[row_num] * (log(pi_values[2]) + mixture1_genotypes[row_num,] %*% log(f_matrix[,2]) + (1 - mixture1_genotypes[row_num,]) %*% log(1 - f_matrix[,2]))
+    log_likelihood = log_likelihood_k1 + log_likelihood_k2
+    log_likelihood_vector <- append(log_likelihood_vector, log_likelihood)}
+
+  new_log_likelihood <- sum(log_likelihood_vector)
+  change_log_likelihood <- new_log_likelihood - old_log_likelihood
+  new_log_likelihood_vector <- append(new_log_likelihood_vector, new_log_likelihood)
+  print(new_log_likelihood)
+  print("Change:")
+  print(change_log_likelihood)}
+
+summation <- function(vector1){
+  total = 0
+  for (i in 1:length(vector1)){
+    total = total + vector1[i]
+  }
+  return(total)
+}
+
